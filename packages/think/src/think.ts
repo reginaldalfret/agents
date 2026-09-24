@@ -5627,7 +5627,8 @@ export class Think<
       continuation,
       messages: this.messages,
       lastBody: this._lastBody,
-      lastClientTools: this._lastClientTools
+      lastClientTools: this._lastClientTools,
+      originMessageIds: this._originMessageIdsFor(requestId)
     });
     const liveTurn = { createdAt: Date.now(), recoveryData: null as unknown };
     const wrap = (data: unknown) => {
@@ -16756,7 +16757,8 @@ export class Think<
       streamStatus
     } = input;
     const { retryTargetUserId } = input.detail;
-    const originIds = this._originMessageIdsFor(requestId);
+    const originIds =
+      this._originMessageIdsFor(requestId) ?? snapshot?.originMessageIds;
     const streamIsTerminal =
       streamStatus === "completed" || streamStatus === "error";
 

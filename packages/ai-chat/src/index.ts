@@ -811,7 +811,8 @@ export class AIChatAgent<
       continuation,
       messages: this.messages,
       lastBody: this._lastBody,
-      lastClientTools: this._lastClientTools
+      lastClientTools: this._lastClientTools,
+      originMessageIds: this._originMessageIdsFor(requestId)
     });
     const wrap = (data: unknown) =>
       wrapChatFiberSnapshot("__cfAIChatFiberSnapshot", snapshot, data);
@@ -5214,7 +5215,8 @@ export class AIChatAgent<
     input: DispatchRecoveredTurnInput<AIChatRecoveryClassification>
   ): Promise<void> {
     const { incident, options, snapshot, recoveryRootRequestId } = input;
-    const originIds = this._originMessageIdsFor(input.requestId);
+    const originIds =
+      this._originMessageIdsFor(input.requestId) ?? snapshot?.originMessageIds;
     const leaf =
       this.messages.length > 0
         ? this.messages[this.messages.length - 1]
