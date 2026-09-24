@@ -1,5 +1,17 @@
 # @cloudflare/ai-chat
 
+## 0.12.1
+
+### Patch Changes
+
+- [#2334](https://github.com/cloudflare/agents/pull/2334) [`7f564e7`](https://github.com/cloudflare/agents/commit/7f564e7bfeee6ec976c12ce1e4dbbaa150906d26) Thanks [@threepointone](https://github.com/threepointone)! - Send the terminal `done` frame after the assistant message is persisted and broadcast.
+
+  `useAgentChat` switches to ready on `done`, but `AIChatAgent` sent it before saving the reply and broadcasting `cf_agent_chat_messages`. On programmatic turns (`saveMessages()`, scheduled work, continuations) and in other open tabs, a message the user sent right after the reply finished could be replaced by the late transcript. The terminal frames, including the error frame for an in-band SSE `error` chunk, are now sent after the transcript broadcast, and become error frames if persisting the reply fails.
+
+- [#2352](https://github.com/cloudflare/agents/pull/2352) [`449ac27`](https://github.com/cloudflare/agents/commit/449ac2787a1d101d7246b8035c9751bc8b5f9966) Thanks [@threepointone](https://github.com/threepointone)! - Prevent a pending automatic continuation from firing after an active stream finishes with a normal assistant response.
+
+- [#2348](https://github.com/cloudflare/agents/pull/2348) [`39361fa`](https://github.com/cloudflare/agents/commit/39361fa8c2194bb46c2b165454726252cca80c34) Thanks [@threepointone](https://github.com/threepointone)! - Chat stream chunk frames now carry a `seq` that keeps counting across streams restarted under the same request (an overflow retry), and `useAgentChat` skips replayed continuation chunks it has already applied. Reconnecting during a tool continuation previously replayed the whole continuation onto the assistant message that already held it, so its text appeared twice.
+
 ## 0.12.0
 
 ### Minor Changes

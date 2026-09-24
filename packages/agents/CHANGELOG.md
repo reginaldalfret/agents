@@ -1,5 +1,45 @@
 # @cloudflare/agents
 
+## 0.25.0
+
+### Minor Changes
+
+- [#2294](https://github.com/cloudflare/agents/pull/2294) [`abda4e3`](https://github.com/cloudflare/agents/commit/abda4e3ab57e5ba435af45bc9ba62999eebb46c3) Thanks [@ben-reitz](https://github.com/ben-reitz)! - `createBrowserSession` accepts `guardrails` — Browser Run [hostname guardrails](https://developers.cloudflare.com/browser-run/features/guardrails/) (`allowedDomains`, `allowedDomainSets`) sent in the session-acquire body and fixed for the session's lifetime, including Live View connections. `connectBrowserSession` accepts an options object (`{ timeoutMs, onClose, onActivity }`) in place of the bare timeout number — `onClose` runs once when the session reaches a terminal state (explicit close, peer closure, or socket error), and `onActivity` fires on every CDP command sent, as an activity signal for idle tracking; the numeric form still works but is now deprecated and will be removed. The `BrowserSessionGuardrails` and `ConnectBrowserSessionOptions` types are exported from `agents/browser`.
+
+  `ConnectBrowserOptions` is now an engine-discriminated union: `browser: "kitesurf"` removes the Chromium-only options (`keepAliveMs`, `includeTargets`, `recording`) at the type level, and `browser: "chromium"` is accepted explicitly on the default arm (the `ConnectChromiumBrowserOptions` and `ConnectKitesurfBrowserOptions` arms are exported). `CdpSession` now takes a `CdpSessionOptions` object (`{ timeoutMs, onClose, sessionId, onActivity }`); the positional constructor still works but is deprecated and will be removed.
+
+  **Migration** — only needed if you construct `CdpSession` directly around your own WebSocket. Move the positional arguments into the options object; `dispose` is renamed `onClose`:
+
+  ```ts
+  // Before (deprecated)
+  new CdpSession(ws, 30_000, releaseBrowser, "session-1");
+
+  // After
+  new CdpSession(ws, {
+    timeoutMs: 30_000,
+    onClose: releaseBrowser,
+    sessionId: "session-1",
+  });
+  ```
+
+  Sessions obtained from `connectBrowser` or `connectBrowserSession` are unaffected.
+
+### Patch Changes
+
+- [#2344](https://github.com/cloudflare/agents/pull/2344) [`a91f669`](https://github.com/cloudflare/agents/commit/a91f669d4408b60af8d5771bae293ca9ebe948cd) Thanks [@threepointone](https://github.com/threepointone)! - `useAgentChat` now lets the server's message snapshot replace an observed (cross-tab or resumed) assistant message when the live copy's text no longer extends the server's copy. An interleaved or duplicated observed stream previously overrode every clean snapshot, including the final one, so the scrambled text stayed until a page reload.
+
+- [#2322](https://github.com/cloudflare/agents/pull/2322) [`677c022`](https://github.com/cloudflare/agents/commit/677c022b4460e1a03c3afc5934aba85cde20ddda) Thanks [@threepointone](https://github.com/threepointone)! - Correct the `ChatRecoveryConfig.maxRecoveryWork` and `ChatRecoveryProgressContext.work` documentation: the default is `10000`, and the unit is a durable stream segment (roughly ten packed streaming chunks, one settled tool result, or one forwarded sub-agent credit), not a "content/tool unit". Values set explicitly before [#2223](https://github.com/cloudflare/agents/issues/2223) are not recalibrated, so re-measure `ctx.work` before carrying one forward.
+
+- [#2348](https://github.com/cloudflare/agents/pull/2348) [`39361fa`](https://github.com/cloudflare/agents/commit/39361fa8c2194bb46c2b165454726252cca80c34) Thanks [@threepointone](https://github.com/threepointone)! - Chat stream chunk frames now carry a `seq` that keeps counting across streams restarted under the same request (an overflow retry), and `useAgentChat` skips replayed continuation chunks it has already applied. Reconnecting during a tool continuation previously replayed the whole continuation onto the assistant message that already held it, so its text appeared twice.
+
+- [#2340](https://github.com/cloudflare/agents/pull/2340) [`3b278b2`](https://github.com/cloudflare/agents/commit/3b278b2c987f47247e551731a1fea9b6dd154456) Thanks [@threepointone](https://github.com/threepointone)! - Fire `onChatResponse` for a turn whose assistant message was persisted right before a Durable Object reset. Think records that the hook is owed before persisting, and on wake fires it with the stored message and the new `ChatResponseResult.recovered: true` instead of re-running the finished turn through chat recovery ([#2266](https://github.com/cloudflare/agents/issues/2266)). Messenger replies now checkpoint their terminal stage before posting the interrupted or error reply, so a reset can no longer make recovery post the apology twice ([#1842](https://github.com/cloudflare/agents/issues/1842)).
+
+- [#2343](https://github.com/cloudflare/agents/pull/2343) [`a2f6f94`](https://github.com/cloudflare/agents/commit/a2f6f944bfc4a9e1c878e2f74822c9ef98c35857) Thanks [@threepointone](https://github.com/threepointone)! - Route stream errors that `classifyChatError` marks `"transient"` or `"rate_limit"` into bounded chat recovery instead of ending the turn. Both thrown errors and in-stream error chunks take the same path as a stream stall (`onChatRecovery`, `chatRecovery.maxAttempts`, then the exhaustion message), and the continuation is delayed with exponential backoff (1 second, doubling, capped at 30 seconds). Without a `classifyChatError` override, behavior is unchanged.
+
+  A recovery attempt that is interrupted again and schedules the next attempt no longer marks the incident `failed` or finishes the durable submission as `aborted`; the scheduled attempt owns the outcome. That attempt is enqueued with the new `"chained_retry"` schedule reason, so it never joins the attempt that scheduled it. A durable submission whose turn is handed to recovery stays `running` until recovery finishes it, instead of being marked `aborted`.
+
+- [#2339](https://github.com/cloudflare/agents/pull/2339) [`1edc989`](https://github.com/cloudflare/agents/commit/1edc989c82c58879c37ed8e81f5d6813fb4599eb) Thanks [@threepointone](https://github.com/threepointone)! - Keep older tool outputs valid for `toModelOutput` and provider-executed tools. Think now truncates older tool results after `convertToModelMessages` instead of rewriting the stored output, so a validating `toModelOutput` no longer throws once a large result ages past the recent-message window, and provider-executed results such as Anthropic web search are replayed intact. `truncateOlderMessages` skips provider-executed outputs, accepts `toolOutputs: false`, and the new `truncateOlderToolResults` helper truncates converted model messages ([#2014](https://github.com/cloudflare/agents/issues/2014)).
+
 ## 0.24.0
 
 ### Minor Changes
