@@ -4580,6 +4580,8 @@ export class Think<
   private _agentToolLastErrors = new Map<string, string>();
   private _agentToolPreTurnAssistantIds = new Map<string, Set<string>>();
   private _agentToolLiveSequences = new Map<string, number>();
+  /** Runs started with `eventDelivery: "terminal"`: their chunks are not broadcast. */
+  private _agentToolTerminalOnlyRuns = new Set<string>();
   /**
    * Request id → run id for in-flight agent-tool turns (null = resolved as
    * not an agent-tool turn, cached so unrelated turns don't re-query SQLite
@@ -4608,13 +4610,19 @@ export class Think<
       this._agentToolForwarders.size > 0 ||
       this._agentToolLiveSequences.size > 0
     ) {
-      interceptAgentToolBroadcast(msg, {
+      const chunkRunId = interceptAgentToolBroadcast(msg, {
         forwarders: this._agentToolForwarders,
         liveSequences: this._agentToolLiveSequences,
         lastErrors: this._agentToolLastErrors,
         responseType: MSG_CHAT_RESPONSE,
         runForRequest: (requestId) => this._agentToolRunForRequest(requestId)
       });
+      if (
+        chunkRunId !== null &&
+        this._agentToolTerminalOnlyRuns.has(chunkRunId)
+      ) {
+        return;
+      }
     }
     super.broadcast(msg, without);
   }
@@ -9570,7 +9578,7 @@ export class Think<
 
   async startAgentToolRun(
     input: unknown,
-    options: { runId: string }
+    options: { runId: string; eventDelivery?: "full" | "terminal" }
   ): Promise<AgentToolRunInspection> {
     const existing = this._readAgentToolChildRun(options.runId);
     if (existing) return this._inspectionFromChildRow(existing);
@@ -9584,6 +9592,9 @@ export class Think<
     const controller = new AbortController();
     this._agentToolAbortControllers.set(options.runId, controller);
     this._agentToolLiveSequences.set(options.runId, 0);
+    if (options.eventDelivery === "terminal") {
+      this._agentToolTerminalOnlyRuns.add(options.runId);
+    }
     this._agentToolPreTurnAssistantIds.set(
       options.runId,
       new Set(
@@ -9666,6 +9677,7 @@ export class Think<
         this._agentToolAbortControllers.delete(options.runId);
         this._agentToolForwarders.delete(options.runId);
         this._agentToolLiveSequences.delete(options.runId);
+        this._agentToolTerminalOnlyRuns.delete(options.runId);
         // Drop the progress emitter's per-run coalescing state.
         this._agentToolProgressEmitterInstance?.forget(options.runId);
         // Drop this run's request-id mappings. When no runs remain in flight

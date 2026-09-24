@@ -147,7 +147,7 @@ const EXPECTED_SCHEMA_DDL = [
         )`
 ];
 
-const EXPECTED_SCHEMA_VERSION = 11;
+const EXPECTED_SCHEMA_VERSION = 12;
 
 describe("schema DDL snapshot", () => {
   it("should match the expected DDL for the current schema version", async () => {
