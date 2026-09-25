@@ -1187,7 +1187,7 @@ export class MCPClientManager extends LifecycleCapability {
     if (connectResult?.state === MCPConnectionState.CONNECTED) {
       const discoverResult = await this.discoverIfConnected(serverId);
       if (discoverResult && !discoverResult.success) {
-        console.error(`Error discovering ${serverId}:`, discoverResult.error);
+        console.warn(`Error discovering ${serverId}:`, discoverResult.error);
       }
     }
   }
