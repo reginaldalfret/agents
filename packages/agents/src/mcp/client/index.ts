@@ -1187,7 +1187,14 @@ export class MCPClientManager extends LifecycleCapability {
     if (connectResult?.state === MCPConnectionState.CONNECTED) {
       const discoverResult = await this.discoverIfConnected(serverId);
       if (discoverResult && !discoverResult.success) {
-        console.error(`Error discovering ${serverId}:`, discoverResult.error);
+        const isTimeout =
+          typeof discoverResult.error === "string" &&
+          discoverResult.error.toLowerCase().includes("timed out");
+        if (isTimeout) {
+          console.warn(`Discovery timed out for ${serverId}:`, discoverResult.error);
+        } else {
+          console.error(`Error discovering ${serverId}:`, discoverResult.error);
+        }
       }
     }
   }
